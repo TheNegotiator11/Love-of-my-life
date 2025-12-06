@@ -1,4 +1,4 @@
-<!-- Updated code with mobile-compatible music playback -->
+<!-- Fixed: audio element is placed before the script & script runs after DOMContentLoaded -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -90,6 +90,7 @@
 </style>
 </head>
 <body>
+
 <div class="gate" id="gatePage">
     <h2>Enter your name to continue</h2>
     <input type="text" id="nameInput" placeholder="Your name..." />
@@ -97,8 +98,9 @@
       <button class="btn" id="continueBtn">Continue</button>
     </div>
     <div class="message" id="message"></div>
-    <div class="hint">Press Continue to submit</div>
+    <div class="hint">Press Enter to continue</div>
 </div>
+
 <div class="bloom-container" id="bloomPage" aria-hidden="true">
     <img src="https://i.imgur.com/4AiXzf8.png" class="flower" alt="blooming flower"/>
     <div class="letter" id="letterText" role="article">
@@ -107,43 +109,63 @@
       <p>— Yours</p>
     </div>
 </div>
-<script>
-const correctName = "Armita";
-const nameInput = document.getElementById('nameInput');
-const messageEl = document.getElementById('message');
-const gatePage = document.getElementById('gatePage');
-const bloomPage = document.getElementById('bloomPage');
-const continueBtn = document.getElementById('continueBtn');
-const music = document.getElementById('bgm');
 
-function unlockMusic() {
-  music.muted = true;
-  music.play().then(() => {
-    music.muted = false;
-  }).catch(e => console.log("Music blocked", e));
-}
-
-function checkName() {
-  const input = nameInput.value.trim();
-  if (!input){ messageEl.textContent = 'Please type a name.'; return; }
-  if (input.toLowerCase() === correctName.toLowerCase()){
-    unlockMusic();
-    gatePage.classList.add('fade-out');
-    setTimeout(()=>{
-      gatePage.style.display='none';
-      bloomPage.style.display='block';
-      bloomPage.setAttribute('aria-hidden','false');
-    },900);
-  } else {
-    messageEl.textContent = "You are not Armita. Please be Armita";
-  }
-}
-
-continueBtn.addEventListener('click', checkName);
-nameInput.addEventListener('keydown', e=>{ if(e.key==='Enter') checkName(); });
-</script>
+<!-- audio placed before script so it's available when script runs -->
 <audio id="bgm" preload="auto" loop>
   <source src="Standing Next to You - Jung Kook.mp3" type="audio/mpeg">
 </audio>
+
+<script>
+// Ensure DOM loaded (extra safety) before grabbing elements
+window.addEventListener('DOMContentLoaded', () => {
+  const correctName = "Armita";
+  const nameInput = document.getElementById('nameInput');
+  const messageEl = document.getElementById('message');
+  const gatePage = document.getElementById('gatePage');
+  const bloomPage = document.getElementById('bloomPage');
+  const continueBtn = document.getElementById('continueBtn');
+  const music = document.getElementById('bgm');
+
+  if (!music) {
+    console.warn('Audio element #bgm not found — music will be disabled.');
+  }
+
+  function unlockMusic() {
+    if (!music) return;
+    // some browsers require muted-play-unmute to allow playback after a user gesture
+    music.muted = true;
+    music.play().then(() => {
+      music.muted = false;
+    }).catch(e => {
+      console.log('Music blocked or failed to play:', e);
+    });
+  }
+
+  function checkName() {
+    const input = nameInput.value.trim();
+    if (!input){ messageEl.textContent = 'Please type a name.'; return; }
+    if (input.toLowerCase() === correctName.toLowerCase()){
+      // trigger music unlock via user gesture
+      unlockMusic();
+      gatePage.classList.add('fade-out');
+      setTimeout(()=>{
+        gatePage.style.display='none';
+        bloomPage.style.display='block';
+        bloomPage.setAttribute('aria-hidden','false');
+        // focus letter for better mobile UX
+        const letter = document.getElementById('letterText');
+        if (letter && letter.scrollIntoView) letter.scrollIntoView({behavior:'smooth'});
+      },900);
+    } else {
+      messageEl.textContent = "You are not Armita. PLease be Armita to continue.";
+    }
+  }
+
+  continueBtn.addEventListener('click', checkName);
+  nameInput.addEventListener('keydown', e=>{ if(e.key==='Enter') checkName(); });
+
+  nameInput.focus();
+});
+</script>
 </body>
 </html>
